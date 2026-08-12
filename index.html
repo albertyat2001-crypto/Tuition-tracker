@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#3157d5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TuitionTrack">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>TuitionTrack</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--primary:#3157d5;--green:#16845b;--red:#c83b3b;--line:#e5e7eb}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--primary);color:white;padding:18px 16px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
+nav{display:grid;grid-template-columns:repeat(4,1fr);background:white;border-bottom:1px solid var(--line);position:sticky;top:76px;z-index:4}
+nav button{border:0;background:white;padding:11px 4px;font-size:12px;color:var(--muted)}nav button.active{color:var(--primary);font-weight:700;border-bottom:3px solid var(--primary)}
+main{max-width:900px;margin:auto;padding:16px}.screen{display:none}.screen.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:12px}
+.stat{font-size:25px;font-weight:800}.label{font-size:12px;color:var(--muted)}h2{font-size:19px;margin:8px 0 14px}h3{font-size:15px;margin:0 0 8px}
+button,.btn{border:0;border-radius:9px;padding:10px 13px;background:var(--primary);color:white;font-weight:650;cursor:pointer}.secondary{background:#eef1ff;color:var(--primary)}.danger{background:#fee2e2;color:#a52323}.success{background:#dcfce7;color:#12643f}
+input,select{width:100%;padding:10px;border:1px solid #d5d9e2;border-radius:9px;background:white;font-size:14px;margin:5px 0 10px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.wrap{flex-wrap:wrap}.small{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-weight:600}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.paid{background:#dcfce7;color:#12643f}.unpaid{background:#fee2e2;color:#a52323}.partial{background:#fef3c7;color:#8a5a00}
+.student{padding:12px 0;border-bottom:1px solid var(--line)}.student:last-child{border-bottom:0}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;padding:15px;z-index:10}.modal.show{display:flex}.modalbox{background:white;border-radius:16px;padding:18px;width:min(520px,100%);max-height:90vh;overflow:auto}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.quick button{padding:14px 10px;font-size:13px}
+.money{font-variant-numeric:tabular-nums}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.notice{border-left:4px solid var(--primary);background:#f0f4ff;padding:12px;border-radius:10px}
+@media(max-width:480px){main{padding:12px}.stat{font-size:21px}nav button{font-size:11px;padding:10px 2px}.card{padding:13px}}
+</style>
+</head>
+<body>
+<header><div class="row"><div><h1>TuitionTrack</h1><p id="today"></p></div><button id="installBtn" style="display:none;background:white;color:#3157d5" onclick="installApp()">📲 Install</button></div></header>
+<nav>
+<button class="active" onclick="show('home',this)">🏠 Home</button>
+<button onclick="show('attendance',this)">✅ Attendance</button>
+<button onclick="show('fees',this)">💰 Fees</button>
+<button onclick="show('reports',this)">📊 Reports</button>
+<button onclick="show('students',this)">👥 Students</button>
+</nav>
+<main>
+<section id="home" class="screen active">
+<h2>Dashboard</h2><div class="quick">
+<button onclick="jumpAttendance()">📋 Today's Attendance</button>
+<button onclick="jumpFees()">💰 Record Payment</button>
+<button onclick="jumpReports()">📊 Monthly Report</button>
+<button onclick="openStudent()">➕ Add Student</button>
+</div>
+<div class="grid">
+<div class="card"><div class="label">Students</div><div class="stat" id="sStudents">0</div></div>
+<div class="card"><div class="label">This month expected</div><div class="stat" id="sExpected">RM0</div></div>
+<div class="card"><div class="label">Collected</div><div class="stat" id="sCollected">RM0</div></div>
+<div class="card"><div class="label">Outstanding</div><div class="stat" id="sOutstanding">RM0</div></div>
+</div>
+<div class="card"><h3>Today's class</h3><div id="todayClass"></div></div>
+<div class="card"><h3>Weekly classes</h3><div id="schedule"></div></div>
+<div class="card"><button onclick="exportData()">💾 Backup data</button> <button class="secondary" onclick="document.getElementById('importFile').click()">↩ Restore</button><input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)"></div>
+</section>
+
+<section id="attendance" class="screen">
+<h2>Attendance</h2>
+<div class="card"><label class="small">Class</label><select id="attClass" onchange="renderAttendance()"></select><label class="small">Date</label><input type="date" id="attDate" onchange="renderAttendance()"></div>
+<div class="card" id="attList"></div>
+</section>
+
+<section id="fees" class="screen">
+<h2>Tuition Fees</h2>
+<div class="card"><div class="grid">
+<div><label class="small">Month</label><input type="month" id="feeMonth" onchange="renderFees()"></div>
+<div><label class="small">Class</label><select id="feeClass" onchange="renderFees()"></select></div>
+</div></div>
+<div class="card"><div class="grid">
+<div><div class="label">Expected</div><div class="stat" id="fExpected">RM0</div></div>
+<div><div class="label">Collected</div><div class="stat" id="fCollected">RM0</div></div>
+<div><div class="label">Current balance</div><div class="stat" id="fBalance">RM0</div></div>
+<div><div class="label">Arrears</div><div class="stat" id="fArrears">RM0</div></div>
+</div></div>
+<div class="card" id="feeList"></div>
+</section>
+
+
+<section id="reports" class="screen">
+<h2>Monthly Reports</h2>
+<div class="card">
+<label class="small">Report month</label>
+<input type="month" id="reportMonth" onchange="renderReport()">
+</div>
+<div class="grid" id="reportStats"></div>
+<div class="card">
+<h3>Class summary</h3>
+<div id="classReport"></div>
+</div>
+<div class="card">
+<h3>Students with outstanding fees</h3>
+<div id="arrearsReport"></div>
+</div>
+<div class="card">
+<button onclick="printReport()">🖨️ Print report</button>
+</div>
+</section>
+
+<section id="students" class="screen">
+<div class="row"><h2>Students</h2><button onclick="openStudent()">+ Add student</button></div>
+<div class="card"><input id="studentSearch" placeholder="Search student..." oninput="renderStudents()"></div>
+<div id="studentList"></div>
+</section>
+</main>
+
+<div class="modal" id="modal"><div class="modalbox" id="modalbox"></div></div>
+
+<script>
+const classes={
+ Monday:"Form 4",Wednesday:"Form 2",Thursday:"Form 5",Friday:"Form 3",Sunday:"Form 1"
+};
+let db=JSON.parse(localStorage.getItem('tuitiontrack')||'{"students":[],"payments":{},"attendance":{}}');
+const money=n=>'RM'+Number(n||0).toFixed(2);
+const ym=d=>d.slice(0,7);
+const today=new Date();
+function save(){localStorage.setItem('tuitiontrack',JSON.stringify(db));refresh();}
+function refresh(){document.getElementById('today').textContent=today.toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long',year:'numeric'});renderHome();renderAttendance();renderFees();renderStudents();}
+function show(id,btn){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');}
+function classOptions(id){document.getElementById(id).innerHTML=Object.values(classes).map(c=>`<option>${c}</option>`).filter((v,i,a)=>a.indexOf(v)===i).join('');}
+function classForToday(){return classes[today.toLocaleDateString('en-US',{weekday:'long'})]||null}
+function renderHome(){
+ let m=ym(today.toISOString().slice(0,10)), active=db.students.filter(s=>s.active!==false), expected=0,collected=0,out=0;
+ active.forEach(s=>{let fee=Number(s.fee||0),p=Number(db.payments[s.id]?.[m]||0);expected+=fee;collected+=p;out+=Math.max(0,fee-p);});
+ document.getElementById('sStudents').textContent=active.length;document.getElementById('sExpected').textContent=money(expected);document.getElementById('sCollected').textContent=money(collected);document.getElementById('sOutstanding').textContent=money(totalArrears(m));
+ let tc=classForToday();document.getElementById('todayClass').innerHTML=tc?`<b>${tc}</b><br><span class="small">${active.filter(s=>s.class===tc).length} students</span><br><br><button onclick="jumpAttendance()">Take attendance</button>`:`<b>No tuition class today.</b>`;
+ document.getElementById('schedule').innerHTML=Object.entries(classes).map(([d,c])=>`<div class="row" style="padding:7px 0"><span>${d}</span><b>${c}</b></div>`).join('');
+}
+function jumpAttendance(){document.querySelectorAll('nav button')[1].click();document.getElementById('attClass').value=classForToday()||'';renderAttendance();}
+function totalArrears(current){let total=0;db.students.filter(s=>s.active!==false).forEach(s=>{let months=Object.keys(db.payments[s.id]||{});let start=s.start||ym(today.toISOString().slice(0,10));let d=new Date(start+'-01'),end=new Date(current+'-01');while(d<=end){let m=d.toISOString().slice(0,7),fee=Number(s.fee||0),p=Number(db.payments[s.id]?.[m]||0);total+=Math.max(0,fee-p);d.setMonth(d.getMonth()+1)}});return total}
+
+function jumpFees(){document.querySelectorAll('nav button')[2].click();}
+function jumpReports(){document.querySelectorAll('nav button')[3].click();document.getElementById('reportMonth').value=ym(today.toISOString().slice(0,10));renderReport();}
+function renderReport(){
+ let m=document.getElementById('reportMonth').value;
+ let students=db.students.filter(s=>s.active!==false), expected=0,collected=0,out=0;
+ students.forEach(s=>{let fee=+s.fee||0,p=+(db.payments[s.id]?.[m]||0);expected+=fee;collected+=p;out+=Math.max(0,fee-p)});
+ document.getElementById('reportStats').innerHTML=[
+   ['Students',students.length],['Expected',money(expected)],['Collected',money(collected)],['Outstanding',money(out)]
+ ].map(x=>`<div class="kpi"><div class="label">${x[0]}</div><div class="stat money">${x[1]}</div></div>`).join('');
+ document.getElementById('classReport').innerHTML=Object.values(classes).filter((v,i,a)=>a.indexOf(v)===i).map(c=>{
+   let ss=students.filter(s=>s.class===c),e=ss.reduce((a,s)=>a+(+s.fee||0),0),p=ss.reduce((a,s)=>a+(+(db.payments[s.id]?.[m]||0)),0);
+   return `<div class="student"><div class="row"><b>${c}</b><span>${ss.length} students</span></div><div class="small">Expected ${money(e)} • Collected ${money(p)} • Outstanding ${money(Math.max(0,e-p))}</div></div>`
+ }).join('');
+ let ar=students.map(s=>({s,b:arrearsFor(s,m)+Math.max(0,(+s.fee||0)-(+db.payments[s.id]?.[m]||0))})).filter(x=>x.b>0).sort((a,b)=>b.b-a.b);
+ document.getElementById('arrearsReport').innerHTML=ar.length?ar.map(x=>`<div class="student"><div class="row"><b>${x.s.name}</b><span class="badge unpaid">${money(x.b)}</span></div><div class="small">${x.s.class}</div><div style="margin-top:7px"><button onclick="sendReminder('${x.s.id}','${m}')">WhatsApp reminder</button> <button class="secondary" onclick="makeReceipt('${x.s.id}','${m}')">Receipt</button></div></div>`).join(''):'<p class="small">No outstanding fees 🎉</p>';
+}
+function sendReminder(id,m){
+ let s=db.students.find(x=>x.id===id),balance=arrearsFor(s,m)+Math.max(0,(+s.fee||0)-(+db.payments[s.id]?.[m]||0));
+ if(!s.phone){alert('No phone number saved for this student. Edit the student and add a phone number.');return}
+ let phone=s.phone.replace(/\D/g,'');
+ if(phone.startsWith('0')) phone='6'+phone;
+ let msg=`Hi, just a friendly reminder that ${s.name}'s tuition fee outstanding is ${money(balance)} as of ${m}. Thank you.`;
+ window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+}
+function makeReceipt(id,m){
+ let s=db.students.find(x=>x.id===id),p=+(db.payments[id]?.[m]||0),fee=+s.fee||0;
+ let w=window.open('','_blank','width=650,height=750');
+ w.document.write(`<html><head><title>Tuition Receipt</title><style>body{font-family:Arial;padding:40px;color:#172033}h1{color:#3157d5}table{width:100%;border-collapse:collapse;margin-top:20px}td{padding:10px;border-bottom:1px solid #ddd}.total{font-size:22px;font-weight:bold}</style></head><body><h1>Tuition Receipt</h1><p><b>Student:</b> ${esc(s.name)}<br><b>Class:</b> ${esc(s.class)}<br><b>Month:</b> ${m}</p><table><tr><td>Monthly tuition fee</td><td>${money(fee)}</td></tr><tr><td>Payment received</td><td>${money(p)}</td></tr><tr><td>Balance</td><td>${money(Math.max(0,fee-p))}</td></tr></table><p class="total">Amount received: ${money(p)}</p><p>Thank you for your payment.</p><script>window.print()<\/script></body></html>`);
+ w.document.close();
+}
+function printReport(){window.print();}
+
+function setupSelects(){classOptions('attClass');classOptions('feeClass');document.getElementById('attDate').value=today.toISOString().slice(0,10);document.getElementById('feeMonth').value=ym(today.toISOString().slice(0,10));let tc=classForToday();if(tc)document.getElementById('attClass').value=tc;}
+function renderAttendance(){if(!document.getElementById('attClass'))return;let c=document.getElementById('attClass').value,d=document.getElementById('attDate').value;let students=db.students.filter(s=>s.active!==false&&s.class===c);let key=d+'|'+c;let a=db.attendance[key]||{};document.getElementById('attList').innerHTML=students.length?students.map(s=>{let st=a[s.id]||'Present';let cls=st==='Present'?'success':st==='Absent'?'danger':'secondary';return `<div class="row student"><div><b>${s.name}</b><div class="small">${s.phone||''}</div></div><button class="${cls}" onclick="cycleAtt('${key}','${s.id}')">${st}</button></div>`}).join(''):`<p class="small">No students in this class yet.</p>`}
+function cycleAtt(key,id){let a=db.attendance[key]||{},x=a[id]||'Present';a[id]=x==='Present'?'Absent':x==='Absent'?'Late':'Present';db.attendance[key]=a;save();}
+function renderFees(){let m=document.getElementById('feeMonth').value,c=document.getElementById('feeClass').value,students=db.students.filter(s=>s.active!==false&&s.class===c),ex=0,col=0,ar=0;students.forEach(s=>{ex+=+s.fee||0;col+=+(db.payments[s.id]?.[m]||0);ar+=arrearsFor(s,m)});document.getElementById('fExpected').textContent=money(ex);document.getElementById('fCollected').textContent=money(col);document.getElementById('fBalance').textContent=money(Math.max(0,ex-col));document.getElementById('fArrears').textContent=money(ar);
+document.getElementById('feeList').innerHTML=students.map(s=>{let p=+(db.payments[s.id]?.[m]||0),fee=+s.fee||0,b=Math.max(0,fee-p),a=arrearsFor(s,m),status=b===0?'PAID':p>0?'PARTIAL':'UNPAID';return `<div class="student"><div class="row"><div><b>${s.name}</b><div class="small">${s.class} • Monthly fee ${money(fee)}</div></div><span class="badge ${status==='PAID'?'paid':status==='PARTIAL'?'partial':'unpaid'}">${status}</span></div><div class="row" style="margin-top:8px"><span class="small">Paid: ${money(p)} • Current balance: ${money(b)} • Older arrears: ${money(Math.max(0,a-b))}</span><button onclick="recordPayment('${s.id}','${m}')">Record payment</button></div></div>`}).join('')||'<p class="small">No students.</p>';}
+function arrearsFor(s,through){let total=0,start=s.start||through,d=new Date(start+'-01'),end=new Date(through+'-01');while(d<end){let m=d.toISOString().slice(0,7),fee=+s.fee||0,p=+(db.payments[s.id]?.[m]||0);total+=Math.max(0,fee-p);d.setMonth(d.getMonth()+1)}return total}
+function recordPayment(id,m){let s=db.students.find(x=>x.id===id),old=+(db.payments[id]?.[m]||0),v=prompt(`Payment for ${s.name} — ${m}\\nMonthly fee: ${money(s.fee)}\\nAlready paid: ${money(old)}\\nEnter TOTAL paid for this month:`,old);if(v===null)return;v=Math.max(0,+v||0);db.payments[id]??={};db.payments[id][m]=v;save();}
+function renderStudents(){let q=(document.getElementById('studentSearch')?.value||'').toLowerCase(),list=db.students.filter(s=>s.name.toLowerCase().includes(q));document.getElementById('studentList').innerHTML=list.map(s=>`<div class="card"><div class="row"><div><h3>${s.name}</h3><div class="small">${s.class} • ${money(s.fee)}/month</div></div><button class="secondary" onclick="openStudent('${s.id}')">Edit</button></div><div style="margin-top:10px"><b>Outstanding: ${money(totalStudentArrears(s))}</b></div></div>`).join('')||'<div class="card"><p>No students yet. Add your first student.</p></div>';}
+function totalStudentArrears(s){return arrearsFor(s,ym(today.toISOString().slice(0,10)))+Math.max(0,(+s.fee||0)-(+db.payments[s.id]?.[ym(today.toISOString().slice(0,10))]||0));}
+function openStudent(id){let s=id?db.students.find(x=>x.id===id):{id:Date.now().toString(),name:'',class:'Form 4',fee:80,start:ym(today.toISOString().slice(0,10)),phone:''};document.getElementById('modalbox').innerHTML=`<h2>${id?'Edit':'Add'} student</h2><label>Name</label><input id="sn" value="${esc(s.name)}"><label>Class</label><select id="sc">${Object.values(classes).filter((v,i,a)=>a.indexOf(v)===i).map(c=>`<option ${c===s.class?'selected':''}>${c}</option>`).join('')}</select><label>Monthly fee (RM)</label><input id="sf" type="number" min="0" step="0.01" value="${s.fee}"><label>Start month</label><input id="ss" type="month" value="${s.start}"><label>Phone (optional)</label><input id="sp" value="${esc(s.phone||'')}"><div style="margin-top:10px"><button onclick="saveStudent('${s.id}',${!!id})">Save</button> <button class="secondary" onclick="closeModal()">Cancel</button>${id?` <button class="danger" onclick="deleteStudent('${s.id}')">Delete</button>`:''}</div>`;document.getElementById('modal').classList.add('show');}
+function saveStudent(id,editing){let s={id,name:document.getElementById('sn').value.trim(),class:document.getElementById('sc').value,fee:+document.getElementById('sf').value||0,start:document.getElementById('ss').value,phone:document.getElementById('sp').value.trim(),active:true};if(!s.name)return alert('Please enter a student name.');if(editing){let i=db.students.findIndex(x=>x.id===id);db.students[i]=s}else db.students.push(s);closeModal();save();}
+function deleteStudent(id){if(confirm('Delete this student? Their records will also be removed from this device.')){db.students=db.students.filter(s=>s.id!==id);delete db.payments[id];save();closeModal();}}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+function esc(x){return String(x||'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tuitiontrack-backup.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();alert('Backup restored.')}catch{alert('Invalid backup file.')}};r.readAsText(f)}
+setupSelects();document.getElementById('reportMonth').value=ym(today.toISOString().slice(0,10));refresh();renderReport();
+</script>
+<script>
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBtn').style.display='block';});
+async function installApp(){
+ if(!deferredPrompt){alert('If the Install button is unavailable, open the browser menu and choose “Add to Home screen”.');return;}
+ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null;
+ document.getElementById('installBtn').style.display='none';
+}
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
